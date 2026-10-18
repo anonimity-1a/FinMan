@@ -1,0 +1,100 @@
+@api = http://localhost:4000/api
+
+### Health
+GET {{api}}/health
+
+### Sign in first: REST Client keeps the session cookie for the requests below.
+# Use ADMIN_EMAIL / ADMIN_PASSWORD from backend/.env
+POST {{api}}/auth/login
+Content-Type: application/json
+
+{ "email": "admin@finman.local", "password": "PASTE_ADMIN_PASSWORD" }
+
+### Who am I
+GET {{api}}/auth/me
+
+### Categories
+GET {{api}}/categories
+
+### Create
+POST {{api}}/entries
+Content-Type: application/json
+
+{ "amount": 120, "merchant": "Ramesh Auto", "occurredAt": "2026-10-04T09:15:00+05:30",
+  "category": "Transport", "paymentMethod": "UPI", "source": "manual" }
+
+### List, filtered
+GET {{api}}/entries?category=Food&from=2026-09-01&to=2026-10-05&page=1&limit=5
+
+### Get by id (paste an _id from the create response)
+GET {{api}}/entries/PASTE_ID_HERE
+
+### Update (full replacement)
+PUT {{api}}/entries/PASTE_ID_HERE
+Content-Type: application/json
+
+{ "amount": 150, "merchant": "Ramesh Auto", "occurredAt": "2026-10-04T09:15:00+05:30",
+  "category": "Transport", "paymentMethod": "UPI", "source": "manual" }
+
+### Delete
+DELETE {{api}}/entries/PASTE_ID_HERE
+
+### Bad id (expect 400)
+GET {{api}}/entries/123
+
+### Missing id (expect 404)
+GET {{api}}/entries/000000000000000000000000
+
+### Negative amount (expect 400)
+POST {{api}}/entries
+Content-Type: application/json
+
+{ "amount": -5, "occurredAt": "2026-10-04", "category": "Food" }
+
+### Unknown category (expect 400)
+POST {{api}}/entries
+Content-Type: application/json
+
+{ "amount": 5, "occurredAt": "2026-10-04", "category": "Nope" }
+
+### Parse SMS
+POST {{api}}/parse
+Content-Type: application/json
+
+{ "text": "Rs.850.00 debited from A/c XX4521 on 23-08-26 to VPA swiggy@icici (UPI Ref No 523614789012). Not you? Call 1800-000-0000 -XYZ Bank", "source": "sms" }
+
+### Parse OTP (expect isTransaction false)
+POST {{api}}/parse
+Content-Type: application/json
+
+{ "text": "482913 is your OTP for login. Do not share it with anyone. -XYZ Bank", "source": "sms" }
+
+### Daily spending
+GET {{api}}/analytics/daily?from=2026-09-06&to=2026-10-05
+
+### Category breakdown
+GET {{api}}/analytics/categories?from=2026-09-06&to=2026-10-05
+
+### Export JSON
+GET {{api}}/export/json
+
+### Export CSV
+GET {{api}}/export/csv
+
+### Month summary ($facet)
+GET {{api}}/analytics/summary?from=2026-10-01&to=2026-10-31
+
+### AI parser stats (TTL collection)
+GET {{api}}/analytics/parser
+
+### Rename a category (multi-document transaction)
+PATCH {{api}}/categories/Rent
+Content-Type: application/json
+
+{ "name": "Housing" }
+
+### Rename it back
+PATCH {{api}}/categories/Housing
+Content-Type: application/json
+
+{ "name": "Rent" }
