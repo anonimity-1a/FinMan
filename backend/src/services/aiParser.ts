@@ -64,6 +64,7 @@ const HF_ERRORS: Record<number, string> = {
 };
 
 async function callHf(messages: unknown[], model: string): Promise<string> {
+  if (!env.HF_TOKEN) throw new HttpError(502, 'AI parser unavailable');
   const res = await fetch(HF_URL, {
     method: 'POST',
     headers: { Authorization: `Bearer ${env.HF_TOKEN}`, 'Content-Type': 'application/json' },
@@ -176,6 +177,11 @@ export async function parseTransactionText(input: string) {
   const categories = await categoryNames();
   const warnings: string[] = [];
   const started = Date.now();
+  if (!env.HF_TOKEN || !env.HF_MODEL) {
+    warnings.push('AI parser unavailable');
+    warnings.push('Filled what we could without AI. Check every field.');
+    return toParseResult(input, null, regexFallback(input), categories, warnings);
+  }
   const result = await runModel(buildMessages(input, categories, todayIst()), env.HF_MODEL, warnings);
   logParse(env.HF_MODEL, 'text', started, result !== null);
   return toParseResult(input, result, regexFallback(input), categories, warnings);

@@ -20,6 +20,8 @@ const limit = (windowMs: number, max: number, message: string) =>
   });
 
 export const app = express();
+// One reverse proxy (the Compose nginx). A numeric hop count, so clients cannot spoof the rate-limit IP.
+if (process.env.TRUST_PROXY === 'true') app.set('trust proxy', 1);
 app.use(helmet());
 app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
 app.use(express.json({ limit: '1mb' }));

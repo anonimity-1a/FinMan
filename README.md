@@ -35,10 +35,35 @@ npm run dev
 
 Vite serves on http://localhost:5173 (or the next free port) and proxies `/api` to the backend on port 4000.
 
+## Docker
+
+Compose runs three services: MongoDB as a one-node replica set (category renames need transactions), the API, and nginx serving the built web app. Nginx proxies `/api` to the API, so the browser stays on one origin and the session cookie works.
+
+1. Copy `.env.example` to `.env` and fill it in. `JWT_SECRET` needs at least 32 random characters. `HF_TOKEN` must start with `hf_`. `ADMIN_EMAIL` and `ADMIN_PASSWORD` become your login.
+2. From the repo root:
+
+```bash
+docker compose up --build
+```
+
+Open http://localhost:8080 and sign in. The API is also on http://localhost:4000. Startup creates the categories and the login user. Add demo transactions once, after the stack is up:
+
+```bash
+docker compose exec backend node dist/scripts/seed.js --demo 60
+```
+
+Leave `COOKIE_SECURE=false` for this HTTP setup. Set it to `true` only when the site is served over HTTPS.
+
+`docker compose down` stops the stack and keeps the database volume. `docker compose down -v` deletes that data.
+
+From the repo root, `npm install` then `npm run dev` starts the API and the Vite app together without Docker. That still needs `backend/.env` and a database, as in Setup above.
+
 ## Commands
 
 | Where | Command | What it does |
 |---|---|---|
+| root | `npm run dev` | API and Vite together |
+| root | `npm run docker:up` | Build and start the Compose stack in the background |
 | backend | `npm run db:local` | One-node MongoDB replica set on port 27017, data kept in `backend/.localdb` |
 | backend | `npm run seed -- --demo 60` | Upserts categories and the login user, adds 60 fake transactions |
 | backend | `npm run dev` | API with reload |

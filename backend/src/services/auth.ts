@@ -27,10 +27,18 @@ export interface TokenPayload { sub: string; email: string }
 export const signToken = (p: TokenPayload) => jwt.sign(p, env.JWT_SECRET, { expiresIn: TOKEN_TTL_SECONDS });
 export const verifyToken = (t: string) => jwt.verify(t, env.JWT_SECRET) as TokenPayload;
 
+// COOKIE_SECURE=true only when the site is actually HTTPS. Plain HTTP (local Docker) must stay false
+// or the browser drops the session cookie. Unset keeps the old production default.
+const cookieSecure = process.env.COOKIE_SECURE === 'true'
+  ? true
+  : process.env.COOKIE_SECURE === 'false'
+    ? false
+    : process.env.NODE_ENV === 'production';
+
 export const cookieOptions = {
   httpOnly: true,                                   // page scripts can't read it
   sameSite: 'lax' as const,
-  secure: process.env.NODE_ENV === 'production',
+  secure: cookieSecure,
   maxAge: TOKEN_TTL_SECONDS * 1000,
   path: '/',
 };
