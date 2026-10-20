@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import { currentUserId } from '../middleware/auth.js';
 import { HttpError } from '../middleware/errorHandler.js';
 import { categoryBreakdown, dailySpending, parserStats, periodSummary } from '../services/analytics.js';
 import { rangeQuery } from '../validation/transaction.js';
@@ -12,17 +13,17 @@ function parseRange(query: unknown) {
 
 export async function daily(req: Request, res: Response) {
   const { from, to } = parseRange(req.query);
-  res.json(await dailySpending(from, to));
+  res.json(await dailySpending(currentUserId(res), from, to));
 }
 
 export async function categories(req: Request, res: Response) {
   const { from, to } = parseRange(req.query);
-  res.json(await categoryBreakdown(from, to));
+  res.json(await categoryBreakdown(currentUserId(res), from, to));
 }
 
 export async function summary(req: Request, res: Response) {
   const { from, to } = parseRange(req.query);
-  res.json(await periodSummary(from, to));
+  res.json(await periodSummary(currentUserId(res), from, to));
 }
 
 export async function parser(_req: Request, res: Response) {

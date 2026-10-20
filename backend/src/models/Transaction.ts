@@ -6,6 +6,7 @@ export const DIRECTIONS = ['debit', 'credit'] as const;
 
 const transactionSchema = new Schema(
   {
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     amount: { type: Number, required: true, min: 0.01 },
     direction: { type: String, enum: DIRECTIONS, default: 'debit' },
     merchant: { type: String, trim: true, default: '' },
@@ -25,8 +26,11 @@ const transactionSchema = new Schema(
 transactionSchema.index({ occurredAt: -1 });                 // History list, newest first
 transactionSchema.index({ direction: 1, occurredAt: -1 });   // analytics: equality field, then range field
 transactionSchema.index({ category: 1, occurredAt: -1 });    // History filtered by category
+transactionSchema.index({ userId: 1, occurredAt: -1 });
+transactionSchema.index({ userId: 1, direction: 1, occurredAt: -1 });
+transactionSchema.index({ userId: 1, category: 1, occurredAt: -1 });
 transactionSchema.index(
-  { dedupeHash: 1 },
+  { userId: 1, dedupeHash: 1 },
   { unique: true, partialFilterExpression: { dedupeHash: { $type: 'string' } } },
 );
 

@@ -14,7 +14,10 @@ function classify(err: any): [number, string] {
   if (err instanceof mongoose.Error.CastError) return [400, `Invalid ${err.path}`];
   if (err instanceof MulterError) return [400, err.message];
   if (err?.code === 11000) {
-    return [409, err.keyPattern?.dedupeHash ? 'This transaction was already saved' : 'That already exists'];
+    if (err.keyPattern?.dedupeHash) return [409, 'This transaction was already saved'];
+    if (err.keyPattern?.username) return [409, 'That username is taken'];
+    if (err.keyPattern?.email) return [409, 'That email is already registered'];
+    return [409, 'That already exists'];
   }
   return [500, 'Server error'];
 }

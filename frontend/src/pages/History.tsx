@@ -3,12 +3,14 @@ import { Link, useSearchParams } from 'react-router';
 import { api } from '../api';
 import Icon from '../components/Icon';
 import TransactionList from '../components/TransactionList';
-import { inr, showDate } from '../format';
+import { formatMoney, showDate } from '../format';
+import { useCurrency } from '../currency';
 import type { Category, Page, Transaction } from '../types';
 
 const LIMIT = 20;
 
 export default function History() {
+  const currency = useCurrency();
   const [params, setParams] = useSearchParams();
   const from = params.get('from') ?? '';
   const to = params.get('to') ?? '';
@@ -64,7 +66,7 @@ export default function History() {
   useEffect(() => { load(); }, [load]);
 
   async function remove(t: Transaction) {
-    if (!window.confirm(`Delete ${inr.format(t.amount)} at ${t.merchant || t.category} on ${showDate(t.occurredAt)}?`)) return;
+    if (!window.confirm(`Delete ${formatMoney(t.amount, currency)} at ${t.merchant || t.category} on ${showDate(t.occurredAt)}?`)) return;
     setDeleting(t._id);
     try {
       await api.remove(t._id);

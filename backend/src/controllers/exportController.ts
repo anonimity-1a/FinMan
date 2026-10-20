@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import { currentUserId } from '../middleware/auth.js';
 import { TZ } from '../config/env.js';
 import { Transaction } from '../models/Transaction.js';
 import { istDayRange, todayIst } from '../services/analytics.js';
@@ -7,9 +8,9 @@ import { optionalRangeQuery } from '../validation/transaction.js';
 
 const dateFmt = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, dateStyle: 'medium', timeStyle: 'short' });
 
-async function load(query: unknown) {
+async function load(res: Response, query: unknown) {
   const { from, to } = optionalRangeQuery.parse(query);
-  const filter: Record<string, unknown> = {};
+  const filter: Record<string, unknown> = { userId: currentUserId(res) };
   if (from || to) {
     const { start, end } = istDayRange(from ?? '1970-01-01', to ?? todayIst());
     filter.occurredAt = { $gte: start, $lt: end };
@@ -18,13 +19,13 @@ async function load(query: unknown) {
 }
 
 export async function exportJson(req: Request, res: Response) {
-  const docs = await load(req.query);
+  const docs = await load(res, req.query);
   res.attachment(`finman-${todayIst()}.json`);
   res.json(docs);
 }
 
 export async function exportCsv(req: Request, res: Response) {
-  const docs = await load(req.query);
+  const docs = await load(res, req.query);
   const rows = [
     csvRow(['Date (IST)', 'Amount', 'Type', 'Merchant', 'Category', 'Payment method', 'Description', 'Source', 'AI parsed', 'Details']),
     ...docs.map((d) =>

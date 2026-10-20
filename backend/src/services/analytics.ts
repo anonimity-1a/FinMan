@@ -1,6 +1,7 @@
 import { TZ } from '../config/env.js';
 import { ParseLog } from '../models/ParseLog.js';
 import { Transaction } from '../models/Transaction.js';
+import type { Types } from 'mongoose';
 
 // '2026-10-05' to '2026-10-05' becomes [04 Oct 18:30Z, 05 Oct 18:30Z): exactly one IST day
 export function istDayRange(from: string, to: string) {
@@ -12,10 +13,10 @@ export function istDayRange(from: string, to: string) {
 
 export const todayIst = () => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
 
-export async function dailySpending(from: string, to: string) {
+export async function dailySpending(userId: Types.ObjectId, from: string, to: string) {
   const { start, end } = istDayRange(from, to);
   const rows = await Transaction.aggregate<{ day: string; total: number; count: number }>([
-    { $match: { direction: 'debit', occurredAt: { $gte: start, $lt: end } } },
+    { $match: { userId, direction: 'debit', occurredAt: { $gte: start, $lt: end } } },
     { $group: {
         _id: { $dateToString: { format: '%Y-%m-%d', date: '$occurredAt', timezone: TZ } },
         total: { $sum: '$amount' },
@@ -34,10 +35,10 @@ export async function dailySpending(from: string, to: string) {
   return out;
 }
 
-export function categoryBreakdown(from: string, to: string) {
+export function categoryBreakdown(userId: Types.ObjectId, from: string, to: string) {
   const { start, end } = istDayRange(from, to);
   return Transaction.aggregate([
-    { $match: { direction: 'debit', occurredAt: { $gte: start, $lt: end } } },
+    { $match: { userId, direction: 'debit', occurredAt: { $gte: start, $lt: end } } },
     { $group: { _id: '$category', total: { $sum: '$amount' }, count: { $sum: 1 } } },
     { $lookup: { from: 'categories', localField: '_id', foreignField: 'name', as: 'cat' } },
     { $project: {
@@ -62,11 +63,11 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 const bucket = (b: Bucket) => ({ name: b._id, total: round2(b.total), count: b.count });
 
 // $facet runs several pipelines over one $match, so the whole month summary costs one round trip.
-export async function periodSummary(from: string, to: string) {
+export async function periodSummary(userId: Types.ObjectId, from: string, to: string) {
   const { start, end } = istDayRange(from, to);
   const debit = { $match: { direction: 'debit' } };
   const [f] = await Transaction.aggregate<SummaryFacets>([
-    { $match: { occurredAt: { $gte: start, $lt: end } } },
+    { $match: { userId, occurredAt: { $gte: start, $lt: end } } },
     { $facet: {
         totals: [{ $group: { _id: '$direction', total: { $sum: '$amount' }, count: { $sum: 1 } } }],
         byMethod: [debit, { $group: { _id: '$paymentMethod', total: { $sum: '$amount' }, count: { $sum: 1 } } }, { $sort: { total: -1 } }],

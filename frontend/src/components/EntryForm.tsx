@@ -2,7 +2,8 @@ import { useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { PAYMENT_METHODS } from '../types';
 import type { Category, Direction, PaymentMethod } from '../types';
-import { todayStr } from '../format';
+import { fractionDigits, moneySymbol, todayStr } from '../format';
+import { useCurrency } from '../currency';
 import Icon from './Icon';
 
 export interface FormValues {
@@ -43,6 +44,8 @@ function validate(v: FormValues): Errors {
 const FIELD_ORDER: (keyof FormValues)[] = ['amount', 'date', 'category'];
 
 export default function EntryForm({ initial, aiFilled, missing, categories, details, submitLabel, saving, onSubmit, onCancel }: Props) {
+  const currency = useCurrency();
+  const digits = fractionDigits(currency);
   const [values, setValues] = useState(initial);
   const [errors, setErrors] = useState<Errors>({});
   const formRef = useRef<HTMLFormElement>(null);
@@ -76,8 +79,8 @@ export default function EntryForm({ initial, aiFilled, missing, categories, deta
     <form ref={formRef} onSubmit={submit} noValidate>
       <div className="form-grid">
         <div className={cls('amount')}>
-          <label htmlFor="f-amount">Amount (₹) {badge('amount')}</label>
-          <input id="f-amount" name="amount" type="number" step="0.01" min="0.01" inputMode="decimal" required
+          <label htmlFor="f-amount">Amount ({moneySymbol(currency)}) {badge('amount')}</label>
+          <input id="f-amount" name="amount" type="number" step={digits === 0 ? '1' : '0.01'} min={digits === 0 ? '1' : '0.01'} inputMode="decimal" required
             value={values.amount} onChange={(e) => set('amount', e.target.value)} onBlur={() => blur('amount')} {...aria('amount')} />
           {help('amount')}
         </div>

@@ -22,10 +22,32 @@ export async function verifyPassword(password: string, stored: string) {
   return timingSafeEqual(actual, expected);
 }
 
-export interface TokenPayload { sub: string; email: string }
+export interface TokenPayload { sub: string; username?: string; email?: string }
 
 export const signToken = (p: TokenPayload) => jwt.sign(p, env.JWT_SECRET, { expiresIn: TOKEN_TTL_SECONDS });
 export const verifyToken = (t: string) => jwt.verify(t, env.JWT_SECRET) as TokenPayload;
+
+export const USERNAME_PATTERN = /^[a-z0-9_]{3,24}$/;
+
+export function publicUser(user: {
+  _id: { toString(): string };
+  username: string;
+  email?: string | null;
+  displayName?: string | null;
+  currency?: string | null;
+  createdAt?: Date;
+  lastLoginAt?: Date | null;
+}) {
+  return {
+    id: String(user._id),
+    username: user.username,
+    email: user.email ?? null,
+    displayName: user.displayName ?? '',
+    currency: user.currency || 'INR',
+    createdAt: user.createdAt ?? null,
+    lastLoginAt: user.lastLoginAt ?? null,
+  };
+}
 
 // COOKIE_SECURE=true only when the site is actually HTTPS. Plain HTTP (local Docker) must stay false
 // or the browser drops the session cookie. Unset keeps the old production default.

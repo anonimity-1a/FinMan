@@ -17,6 +17,7 @@ export const env = z.object({
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
   ADMIN_EMAIL: z.string().email(),
   ADMIN_PASSWORD: z.string().min(8),
+  ADMIN_USERNAME: z.preprocess(blank, z.string().trim().toLowerCase().regex(/^[a-z0-9_]{3,24}$/).optional()),
   // optional second login for demos and the viva
   DEMO_EMAIL: z.preprocess(blank, z.string().email().optional()),
   DEMO_PASSWORD: z.preprocess(blank, z.string().min(6).optional()),

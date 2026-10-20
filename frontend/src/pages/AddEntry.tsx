@@ -7,7 +7,8 @@ import ParseInput from '../components/ParseInput';
 import Amount from '../components/Amount';
 import Icon from '../components/Icon';
 import SampleMessages from '../components/SampleMessages';
-import { fromInputs, inr, todayStr } from '../format';
+import { formatMoney, fromInputs, moneySymbol, todayStr } from '../format';
+import { useCurrency } from '../currency';
 import type { Category, ParseResult, Source, TransactionInput } from '../types';
 
 type Step = 'input' | 'parsing' | 'review' | 'saving';
@@ -51,6 +52,7 @@ function fromParse(r: ParseResult): Review {
 }
 
 export default function AddEntry() {
+  const currency = useCurrency();
   const [step, setStep] = useState<Step>('input');
   const [text, setText] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
@@ -97,7 +99,7 @@ export default function AddEntry() {
     setStep('saving'); setError(''); setDuplicate(false);
     try {
       await api.create(payload);
-      setSaved(`Saved ${inr.format(payload.amount)}${payload.merchant ? ` at ${payload.merchant}` : ''}`);
+      setSaved(`Saved ${formatMoney(payload.amount, currency)}${payload.merchant ? ` at ${payload.merchant}` : ''}`);
       setText(''); setReview(null); setStep('input');
     } catch (e) {
       if (e instanceof ApiError && e.status === 409) setDuplicate(true);
@@ -135,7 +137,7 @@ export default function AddEntry() {
               <div className="statement-label"><span className="dot" />
                 {review.source === 'manual' ? 'Manual entry' : review.values.direction === 'credit' ? 'Money in' : 'Money out'}
               </div>
-              {amount > 0 ? <Amount value={amount} className="big-amount" /> : <div className="big-amount" style={{ opacity: 0.4 }}>₹ —</div>}
+              {amount > 0 ? <Amount value={amount} className="big-amount" /> : <div className="big-amount" style={{ opacity: 0.4 }}>{moneySymbol(currency)} —</div>}
               <div className="meta">
                 <span>{review.values.merchant || 'Unknown merchant'}</span>
                 {review.values.category && <span className="chip">{review.values.category}</span>}

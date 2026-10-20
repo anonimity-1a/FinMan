@@ -1,4 +1,56 @@
-export const inr = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' });
+import { CURRENCIES, type CurrencyCode } from './types';
+
+export function currencyOf(code: string | undefined) {
+  return CURRENCIES.find((c) => c.code === code) ?? CURRENCIES[0];
+}
+
+const symbolCache = new Map<string, string>();
+
+export function moneySymbol(code: string) {
+  const known = currencyOf(code);
+  const hit = symbolCache.get(known.code);
+  if (hit) return hit;
+  const symbol = new Intl.NumberFormat(known.locale, {
+    style: 'currency', currency: known.code, currencyDisplay: 'narrowSymbol',
+  }).formatToParts(0).find((p) => p.type === 'currency')?.value ?? known.code;
+  symbolCache.set(known.code, symbol);
+  return symbol;
+}
+
+export function fractionDigits(code: string) {
+  const known = currencyOf(code);
+  return new Intl.NumberFormat(known.locale, { style: 'currency', currency: known.code })
+    .resolvedOptions().maximumFractionDigits ?? 2;
+}
+
+export function formatMoney(value: number, code: string) {
+  const known = currencyOf(code);
+  return new Intl.NumberFormat(known.locale, { style: 'currency', currency: known.code }).format(value);
+}
+
+export function formatMoneyCompact(value: number, code: string) {
+  const known = currencyOf(code);
+  return new Intl.NumberFormat(known.locale, {
+    style: 'currency', currency: known.code, notation: 'compact', maximumFractionDigits: 1,
+  }).format(value);
+}
+
+export function moneyParts(value: number, code: string) {
+  const known = currencyOf(code);
+  const digits = fractionDigits(code);
+  return new Intl.NumberFormat(known.locale, {
+    style: 'currency', currency: known.code, currencyDisplay: 'narrowSymbol',
+    minimumFractionDigits: digits, maximumFractionDigits: digits,
+  }).formatToParts(Math.abs(value));
+}
+
+export const currencyOptions = [...CURRENCIES].sort((a, b) => {
+  if (a.code === 'INR') return -1;
+  if (b.code === 'INR') return 1;
+  return a.name.localeCompare(b.name);
+});
+
+export type { CurrencyCode };
 
 const ymd = (d: Date) => d.toLocaleDateString('en-CA');   // local YYYY-MM-DD, never the UTC date
 export const todayStr = () => ymd(new Date());

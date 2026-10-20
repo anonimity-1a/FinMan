@@ -12,7 +12,9 @@ await Transaction.syncIndexes();
 
 const cats = ['Food', 'Groceries', 'Transport', 'Shopping', 'Bills & Utilities', 'Health', 'Rent', 'Other'];
 const now = Date.now();
+const userId = new mongoose.Types.ObjectId();
 await Transaction.insertMany(Array.from({ length: N }, (_, i) => ({
+  userId,
   amount: 50 + (i % 40) * 37.5,
   direction: i % 10 === 0 ? 'credit' : 'debit',
   occurredAt: new Date(now - (i / N) * 365 * 86_400_000),

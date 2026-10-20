@@ -1,4 +1,4 @@
-import type { Category, DailyPoint, CategoryPoint, Page, ParseResult, ParserStat, Summary, Transaction, TransactionInput } from './types';
+import type { Account, Category, DailyPoint, CategoryPoint, Page, ParseResult, ParserStat, Summary, Transaction, TransactionInput } from './types';
 
 export const BASE: string = import.meta.env.VITE_API_URL ?? '';
 
@@ -25,15 +25,21 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (res.status === 204) return undefined as T;
   const body = await res.json().catch(() => ({}));
   // a 401 anywhere except the login call means the session ended; App listens and shows the sign-in screen
-  if (res.status === 401 && path !== '/auth/login') window.dispatchEvent(new Event('finman:signed-out'));
+  if (res.status === 401 && path !== '/auth/login' && path !== '/auth/register') window.dispatchEvent(new Event('finman:signed-out'));
   if (!res.ok) throw new ApiError(body?.error?.message ?? `Request failed (${res.status})`, res.status);
   return body as T;
 }
 
 export const api = {
-  me: () => request<{ email: string }>('/auth/me'),
-  login: (email: string, password: string) =>
-    request<{ email: string }>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  me: () => request<Account>('/auth/me'),
+  login: (login: string, password: string) =>
+    request<Account>('/auth/login', { method: 'POST', body: JSON.stringify({ login, password }) }),
+  register: (username: string, password: string, displayName: string) =>
+    request<Account>('/auth/register', { method: 'POST', body: JSON.stringify({ username, password, displayName }) }),
+  updateProfile: (profile: { displayName: string; currency: string }) =>
+    request<Account>('/auth/me', { method: 'PATCH', body: JSON.stringify(profile) }),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<void>('/auth/password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) }),
   logout: () => request<void>('/auth/logout', { method: 'POST' }),
   categories: () => request<Category[]>('/categories'),
   createCategory: (name: string, color: string) =>

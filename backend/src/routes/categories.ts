@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import mongoose from 'mongoose';
 import { z } from 'zod';
+import { currentUserId } from '../middleware/auth.js';
 import { Category } from '../models/Category.js';
 import { Transaction } from '../models/Transaction.js';
 import { HttpError } from '../middleware/errorHandler.js';
@@ -17,7 +18,10 @@ const r = Router();
 r.get('/', async (_req, res) => {
   const [cats, usage] = await Promise.all([
     Category.find().sort({ name: 1 }).lean(),
-    Transaction.aggregate<{ _id: string; count: number }>([{ $group: { _id: '$category', count: { $sum: 1 } } }]),
+    Transaction.aggregate<{ _id: string; count: number }>([
+      { $match: { userId: currentUserId(res) } },
+      { $group: { _id: '$category', count: { $sum: 1 } } },
+    ]),
   ]);
   const used = new Map(usage.map((u) => [u._id, u.count]));
   res.json(cats.map((c) => ({ ...c, transactionCount: used.get(c.name) ?? 0 })));
@@ -61,7 +65,7 @@ r.patch('/:name', async (req, res) => {
 r.delete('/:name', async (req, res) => {
   const catName = String(req.params.name);
   const inUse = await Transaction.countDocuments({ category: catName });
-  if (inUse > 0) throw new HttpError(409, `${inUse} transactions use this category. Rename it or move them first`);
+  if (inUse > 0) throw new HttpError(409, 'This category is still in use. Rename it or move the entries first');
   const doc = await Category.findOneAndDelete({ name: catName });
   if (!doc) throw new HttpError(404, 'Category not found');
   res.status(204).end();

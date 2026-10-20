@@ -66,7 +66,11 @@ before(async () => {
     { name: 'Food', color: '#f97316' }, { name: 'Transport', color: '#0ea5e9' },
     { name: 'Rent', color: '#64748b' }, { name: 'Transfers', color: '#6366f1' }, { name: 'Other', color: '#9ca3af' },
   ]);
-  await User.create({ email: process.env.ADMIN_EMAIL, passwordHash: await hashPassword(process.env.ADMIN_PASSWORD!) });
+  await User.create({
+    username: 'tester',
+    email: process.env.ADMIN_EMAIL,
+    passwordHash: await hashPassword(process.env.ADMIN_PASSWORD!),
+  });
   server = app.listen(0);
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
@@ -85,7 +89,7 @@ describe('authentication', () => {
   test('wrong password is rejected without revealing which part was wrong', async () => {
     const r = await call('POST', '/auth/login', { email: process.env.ADMIN_EMAIL, password: 'nope' }, false);
     assert.equal(r.status, 401);
-    assert.equal(r.body.error.message, 'Wrong email or password');
+    assert.equal(r.body.error.message, 'Wrong username or password');
   });
 
   test('login sets an httpOnly session cookie that unlocks the API', async () => {
@@ -103,6 +107,50 @@ describe('authentication', () => {
     cookie = `${good.slice(0, -4)}AAAA`;
     assert.equal((await call('GET', '/entries')).status, 401);
     cookie = good;
+  });
+
+  test('a new account only sees its own transactions, and the password hash stays secret', async () => {
+    const mine = await call('POST', '/entries', entry({ merchant: 'Private Cafe', category: 'Food' }));
+    assert.equal(mine.status, 201);
+    const adminCookie = cookie;
+    try {
+      const reg = await call('POST', '/auth/register', {
+        username: 'riya', password: 'secret-pass-1', displayName: 'Riya',
+      }, false);
+      assert.equal(reg.status, 201);
+      assert.equal(reg.body.username, 'riya');
+      assert.equal(reg.body.displayName, 'Riya');
+      assert.equal(reg.body.passwordHash, undefined);
+      cookie = (reg.headers.get('set-cookie') ?? '').split(';')[0];
+      assert.match(cookie, /finman_token=/);
+      assert.equal((await call('GET', `/entries/${mine.body._id}`)).status, 404);
+      assert.equal((await call('GET', '/entries?q=Private Cafe')).body.total, 0);
+      assert.equal((await call('POST', '/auth/register', { username: 'riya', password: 'secret-pass-1' }, false)).status, 409);
+    } finally {
+      cookie = adminCookie;
+    }
+  });
+
+  test('profile and password changes never reveal the stored secret', async () => {
+    const profile = await call('PATCH', '/auth/me', { displayName: 'Tester' });
+    assert.equal(profile.status, 200);
+    assert.equal(profile.body.displayName, 'Tester');
+    assert.equal(profile.body.email, process.env.ADMIN_EMAIL);
+    assert.equal(profile.body.currency, 'INR');
+    assert.equal(profile.body.passwordHash, undefined);
+    const usd = await call('PATCH', '/auth/me', { currency: 'USD' });
+    assert.equal(usd.status, 200);
+    assert.equal(usd.body.currency, 'USD');
+    assert.equal(usd.body.displayName, 'Tester');
+    assert.equal((await call('PATCH', '/auth/me', { currency: 'BTC' })).status, 400);
+    assert.equal((await call('PATCH', '/auth/me', { currency: 'INR' })).body.currency, 'INR');
+    assert.equal((await call('POST', '/auth/password', { currentPassword: 'nope', newPassword: 'another-pass-1' })).status, 400);
+    assert.equal((await call('POST', '/auth/password', {
+      currentPassword: process.env.ADMIN_PASSWORD, newPassword: 'another-pass-1',
+    })).status, 204);
+    assert.equal((await call('POST', '/auth/password', {
+      currentPassword: 'another-pass-1', newPassword: process.env.ADMIN_PASSWORD,
+    })).status, 204);
   });
 });
 
@@ -178,12 +226,14 @@ describe('duplicate detection (partial unique index)', () => {
 
 describe('analytics aggregations', () => {
   before(async () => {
+    const owner = await User.findOne({ email: process.env.ADMIN_EMAIL }).lean();
+    assert.ok(owner);
     await Transaction.insertMany([
       // IST boundaries: 23:59 on 4 Jan and 00:01 on 5 Jan must land on different days
-      { amount: 100, direction: 'debit', occurredAt: new Date('2025-01-04T23:59:00+05:30'), category: 'Food', source: 'manual', merchant: 'A', paymentMethod: 'UPI' },
-      { amount: 200, direction: 'debit', occurredAt: new Date('2025-01-05T00:01:00+05:30'), category: 'Food', source: 'manual', merchant: 'B', paymentMethod: 'Card' },
-      { amount: 350, direction: 'debit', occurredAt: new Date('2025-01-06T10:00:00+05:30'), category: 'Transport', source: 'manual', merchant: 'B', paymentMethod: 'Card' },
-      { amount: 5000, direction: 'credit', occurredAt: new Date('2025-01-06T11:00:00+05:30'), category: 'Transfers', source: 'manual', merchant: 'Employer', paymentMethod: 'NetBanking' },
+      { userId: owner._id, amount: 100, direction: 'debit', occurredAt: new Date('2025-01-04T23:59:00+05:30'), category: 'Food', source: 'manual', merchant: 'A', paymentMethod: 'UPI' },
+      { userId: owner._id, amount: 200, direction: 'debit', occurredAt: new Date('2025-01-05T00:01:00+05:30'), category: 'Food', source: 'manual', merchant: 'B', paymentMethod: 'Card' },
+      { userId: owner._id, amount: 350, direction: 'debit', occurredAt: new Date('2025-01-06T10:00:00+05:30'), category: 'Transport', source: 'manual', merchant: 'B', paymentMethod: 'Card' },
+      { userId: owner._id, amount: 5000, direction: 'credit', occurredAt: new Date('2025-01-06T11:00:00+05:30'), category: 'Transfers', source: 'manual', merchant: 'Employer', paymentMethod: 'NetBanking' },
     ]);
   });
 
@@ -230,9 +280,11 @@ describe('analytics aggregations', () => {
 
 describe('category rename (multi-document transaction)', () => {
   test('renaming updates the category and every transaction that copied its name', async () => {
+    const owner = await User.findOne({ email: process.env.ADMIN_EMAIL }).lean();
+    assert.ok(owner);
     await Transaction.create([
-      { amount: 9000, occurredAt: new Date('2025-02-01'), category: 'Rent', source: 'manual' },
-      { amount: 9000, occurredAt: new Date('2025-03-01'), category: 'Rent', source: 'manual' },
+      { userId: owner._id, amount: 9000, occurredAt: new Date('2025-02-01'), category: 'Rent', source: 'manual' },
+      { userId: owner._id, amount: 9000, occurredAt: new Date('2025-03-01'), category: 'Rent', source: 'manual' },
     ]);
     const r = await call('PATCH', '/categories/Rent', { name: 'Housing' });
     assert.equal(r.status, 200);

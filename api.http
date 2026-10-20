@@ -4,14 +4,35 @@
 GET {{api}}/health
 
 ### Sign in first: REST Client keeps the session cookie for the requests below.
-# Use ADMIN_EMAIL / ADMIN_PASSWORD from backend/.env
+# Username or email, plus the password. Seeded admin can use ADMIN_EMAIL from backend/.env.
 POST {{api}}/auth/login
 Content-Type: application/json
 
-{ "email": "admin@finman.local", "password": "PASTE_ADMIN_PASSWORD" }
+{ "login": "admin", "password": "PASTE_ADMIN_PASSWORD" }
+
+### Create an account (password is stored as a hash, never returned)
+POST {{api}}/auth/register
+Content-Type: application/json
+
+{ "username": "riya", "password": "secret-pass-1", "displayName": "Riya" }
 
 ### Who am I
 GET {{api}}/auth/me
+
+### Update display name
+PATCH {{api}}/auth/me
+Content-Type: application/json
+
+{ "displayName": "Riya S", "currency": "INR" }
+
+### Change password
+POST {{api}}/auth/password
+Content-Type: application/json
+
+{ "currentPassword": "secret-pass-1", "newPassword": "another-pass-1" }
+
+### Sign out
+POST {{api}}/auth/logout
 
 ### Categories
 GET {{api}}/categories

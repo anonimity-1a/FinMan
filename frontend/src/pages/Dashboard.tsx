@@ -9,7 +9,8 @@ import SpendingOverTimeChart from '../components/charts/SpendingOverTimeChart';
 import ExportButtons from '../components/ExportButtons';
 import MonthInsights from '../components/MonthInsights';
 import TransactionList from '../components/TransactionList';
-import { daysAgoStr, monthBounds, monthName, todayStr } from '../format';
+import { daysAgoStr, moneySymbol, monthBounds, monthName, todayStr } from '../format';
+import { useCurrency } from '../currency';
 import type { Category, CategoryPoint, DailyPoint, Page, Summary, Transaction } from '../types';
 
 interface Slot<T> { data: T | null; error: string; loading: boolean }
@@ -42,6 +43,7 @@ function SlotBody({ slot, retry, height = 160, children }: { slot: Slot<unknown>
 const RANGES = [7, 30, 90] as const;
 
 export default function Dashboard() {
+  const currency = useCurrency();
   const [range, setRange] = useState<(typeof RANGES)[number]>(30);
   const [month, setMonth] = useState(todayStr().slice(0, 7));
   const [categories, setCategories] = useState<Category[]>([]);
@@ -84,7 +86,7 @@ export default function Dashboard() {
         <section className="statement" aria-label="Spending summary">
           <div>
             <div className="statement-label"><span className="dot" />Spent in the last {range} days</div>
-            {daily.data ? <Amount value={stats.total} className="big-amount" /> : <div className="big-amount" style={{ opacity: 0.4 }}>₹—</div>}
+            {daily.data ? <Amount value={stats.total} className="big-amount" /> : <div className="big-amount" style={{ opacity: 0.4 }}>{moneySymbol(currency)}—</div>}
             <dl className="statement-facts">
               <div><dt>Today</dt><dd><Amount value={todayTotal} /></dd></div>
               <div><dt>Daily average</dt><dd><Amount value={stats.avg} /></dd></div>
