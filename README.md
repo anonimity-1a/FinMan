@@ -56,6 +56,26 @@ Leave `COOKIE_SECURE=false` for this HTTP setup. Set it to `true` only when the 
 
 `docker compose down` stops the stack and keeps the database volume. `docker compose down -v` deletes that data.
 
+## Portainer (Git stack)
+
+Compose does not use `env_file: .env`, so a Git pull does not need a `.env` in the repo. Put the secrets in Portainer instead.
+
+1. Edit stack settings → **Environment variables** → **Advanced mode**.
+2. Paste the same keys as `.env.example`. At minimum:
+
+```env
+MONGODB_DB=finman
+JWT_SECRET=replace-with-at-least-32-random-characters
+ADMIN_EMAIL=admin@finman.com
+ADMIN_PASSWORD=your-strong-password
+CORS_ORIGIN=https://finman.aamoghtech.org
+COOKIE_SECURE=true
+WEB_PORT=8080
+```
+
+Use your real public origin for `CORS_ORIGIN`. Set `COOKIE_SECURE=true` when the site is HTTPS. Leave `HF_TOKEN` blank if you are fine with the regex SMS fallback.
+3. Pull and redeploy the stack. Open the site on port `WEB_PORT` (or through your reverse proxy).
+
 ## Laptop server
 
 Compose is the way to host FinMan on a personal laptop. MongoDB stays on the Docker network and is not published. Accounts, password hashes, and transactions all live in that database. Other devices on the same Wi-Fi open the web app; they never connect to MongoDB directly.

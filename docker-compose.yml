@@ -23,13 +23,23 @@ services:
 
   backend:
     build: ./backend
-    env_file: .env
+    # No env_file: Portainer Git stacks have no .env on disk. Set the same keys in
+    # Portainer → Stack → Environment variables (or a local .env for `docker compose`).
     environment:
       NODE_ENV: production
       PORT: 4000
       MONGODB_URI: mongodb://mongo:27017/?replicaSet=rs0
       MONGODB_DB: ${MONGODB_DB:-finman}
-      CORS_ORIGIN: "https://finman.aamoghtech.org"
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in Portainer env or a local .env}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?Set ADMIN_EMAIL in Portainer env or a local .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in Portainer env or a local .env}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+      DEMO_EMAIL: ${DEMO_EMAIL:-}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:-}
+      HF_TOKEN: ${HF_TOKEN:-}
+      HF_MODEL: ${HF_MODEL:-}
+      HF_VISION_MODEL: ${HF_VISION_MODEL:-}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       TRUST_PROXY: "true"
     ports:
