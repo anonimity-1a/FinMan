@@ -3,7 +3,10 @@ name: finman
 services:
   mongo:
     image: mongo:8.0
-    command: ["--replSet", "rs0", "--bind_ip_all", "--setParameter", "bypassKernelVersionCheck=true"]
+    # Kernel 6.19+ blocks Mongo 8.x (SERVER-121912). rseq=1 avoids the hard exit.
+    environment:
+      GLIBC_TUNABLES: "glibc.pthread.rseq=1"
+    command: ["--replSet", "rs0", "--bind_ip_all"]
     volumes:
       - mongo_data:/data/db
     healthcheck:
